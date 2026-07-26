@@ -6,6 +6,7 @@ import { getMyGames, getProfiles, getRoundsForGames } from '../lib/api'
 import { buildOpponentCards } from '../lib/stats'
 import { avatarColor, getInitials } from '../lib/avatar'
 import { formatDate } from '../lib/format'
+import PlayerProfileModal from '../components/PlayerProfileModal'
 
 const SORTS = [
   { key: 'games', label: 'За кількістю партій' },
@@ -99,6 +100,7 @@ export default function PlayersPage() {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('games')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [profileTarget, setProfileTarget] = useState(null)
   const [invitingId, setInvitingId] = useState(null)
   const [actionError, setActionError] = useState(null)
 
@@ -271,9 +273,7 @@ export default function PlayersPage() {
                 </p>
                 <div className="flex gap-2 shrink-0">
                   <button
-                    onClick={() =>
-                      navigate(`/history?opponent=${encodeURIComponent(profile.display_name)}`)
-                    }
+                    onClick={() => setProfileTarget(profile)}
                     className="px-3 py-1.5 rounded-md border border-stone-700 hover:border-stone-500 text-stone-200 text-sm cursor-pointer"
                   >
                     Профіль
@@ -293,6 +293,9 @@ export default function PlayersPage() {
       </div>
 
       {showAddModal && <AddPlayerModal onClose={() => setShowAddModal(false)} />}
+      {profileTarget && (
+        <PlayerProfileModal profile={profileTarget} onClose={() => setProfileTarget(null)} />
+      )}
     </div>
   )
 }

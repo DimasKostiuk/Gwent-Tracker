@@ -248,22 +248,28 @@ export default function HistoryPage() {
                       >
                         <span className={`w-1 shrink-0 ${meta.bar}`} />
                         <div className="flex-1 min-w-0 flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-1 px-4 py-3">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-stone-100 truncate">проти {opponent.display_name}</p>
-                            <p className="text-xs text-stone-500 truncate">
-                              {myFaction} проти {opponentFaction}
+                          <div className="min-w-0 flex items-center gap-4">
+                            <div className="min-w-0">
+                              <p className="text-stone-100 truncate">проти {opponent.display_name}</p>
+                              <p className="text-xs text-stone-500 truncate">
+                                {myFaction} проти {opponentFaction}
+                              </p>
+                            </div>
+                            <p className={`text-xs uppercase tracking-wide shrink-0 ${meta.badge}`}>
+                              {meta.label}
                             </p>
                           </div>
-                          <p className={`text-xs uppercase tracking-wide shrink-0 ${meta.badge}`}>
-                            {meta.label}
-                          </p>
-                          <p className="text-xs text-stone-500 shrink-0 hidden sm:block">
-                            {formatDate(game.finished_at)} · {formatDuration(game.started_at, game.finished_at)}
-                          </p>
-                          <p className="font-mono text-xl text-stone-100 shrink-0">
-                            {myRounds} : {opponentRounds}
-                          </p>
-                          <span className="text-stone-600 text-xs shrink-0">{isExpanded ? '▲' : '▼'}</span>
+
+                          <div className="ml-auto flex items-center gap-4 shrink-0">
+                            <p className="text-xs text-stone-500 hidden sm:block">
+                              {formatDate(game.finished_at)} ·{' '}
+                              {formatDuration(game.started_at, game.finished_at)}
+                            </p>
+                            <p className="font-mono text-xl text-stone-100">
+                              {myRounds} : {opponentRounds}
+                            </p>
+                            <span className="text-stone-600 text-xs">{isExpanded ? '▲' : '▼'}</span>
+                          </div>
                         </div>
                       </button>
 

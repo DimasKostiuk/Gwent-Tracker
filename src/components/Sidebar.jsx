@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { useGameInvite } from '../lib/GameInviteContext'
 import { getMyGames, getProfiles } from '../lib/api'
 import { computeCurrentStreak } from '../lib/stats'
 import { getInitials } from '../lib/avatar'
+import { showEasterEgg } from '../lib/easterEgg'
 import logo from '../assets/gwent-tracker-logo.png'
 
 const links = [
@@ -24,6 +25,52 @@ function Diamond({ active }) {
   )
 }
 
+const LOGO_EASTER_EGGS = [
+  'Тихіше, Плотва спить 🐴',
+  'Ще раз — і я покличу Весеміра',
+  'Гвінт — це не просто гра, це стиль життя',
+  'На Лебеді клянусь!',
+  'Обережно, тут ходить Дикий Гін',
+  'Цірі, це ти клікаєш?',
+  'Йеннефер не схвалює цей клік',
+  'Трісс би це сподобалось',
+  'Хтось замовляв кубло грифонів?',
+  'Данделіон уже пише про це пісню',
+  'Ласка теж любить клікати не по ділу',
+  'Ще трохи — і покличемо Регіса',
+  'Це вже занадто, навіть для відьмака',
+  'Курва, ще раз — і я тебе прокляну',
+  'Трясця, знову ти сюди лізеш',
+  'Холера ясна, це вже перебір',
+  'Зараза, дай лого спокій',
+  'Ану відчепись, бляха',
+  'Чорт забирай, ти вперта людина',
+  'Досить, я вже втомився від тебе',
+  'Ще один клік — і я звільняюсь',
+  'Ти як Лютик — набридливий, але кумедний',
+  'Трясця твоїй матері, заспокойся',
+  'Холера, дай лого перепочити',
+  'Курва його мать, ну що тобі треба',
+  'Зимно як в Каер Морхені, а ти все клікаєш',
+  'Ще трохи — і викличу Ложу Чарівниць',
+  'Гірше за ніч в Ередінському лісі',
+  'Йой, курва, обережніше з мишкою',
+  'Досить, бляха муха, я не render-машина',
+  'Трясця, у мене вже дежавю',
+  'Ще один клік і я стаю Дикою Гонею',
+]
+
+const LOGO_SPAM_EASTER_EGGS = [
+  'Курва, спокійно...',
+  'Трясця, вгамуйся вже',
+  'Досить, я не бездонний колодязь фраз',
+  'Холера, дай лого відпочити',
+  'Курва, невже нема інших справ?',
+]
+
+const RATE_LIMIT_WINDOW_MS = 10000
+const RATE_LIMIT_CLICKS = 5
+
 export default function Sidebar() {
   const { user, signOut } = useAuth()
   const { activeInvite } = useGameInvite()
@@ -32,6 +79,24 @@ export default function Sidebar() {
   const [gamesCount, setGamesCount] = useState(0)
   const [playersCount, setPlayersCount] = useState(0)
   const [now, setNow] = useState(() => Date.now())
+  const logoClickTimestamps = useRef([])
+
+  function handleLogoClick(e) {
+    const now = Date.now()
+    const recentClicks = [...logoClickTimestamps.current, now].filter(
+      (t) => now - t <= RATE_LIMIT_WINDOW_MS,
+    )
+    logoClickTimestamps.current = recentClicks
+
+    if (recentClicks.length > RATE_LIMIT_CLICKS) {
+      const spamText = LOGO_SPAM_EASTER_EGGS[Math.floor(Math.random() * LOGO_SPAM_EASTER_EGGS.length)]
+      showEasterEgg(spamText, e)
+      return
+    }
+
+    const randomText = LOGO_EASTER_EGGS[Math.floor(Math.random() * LOGO_EASTER_EGGS.length)]
+    showEasterEgg(randomText, e)
+  }
 
   useEffect(() => {
     getMyGames(user.id)
@@ -99,7 +164,12 @@ export default function Sidebar() {
   return (
     <>
       <nav className="hidden md:flex md:flex-col md:w-52 md:shrink-0 border-r border-stone-800 bg-stone-950 p-3 gap-1">
-        <img src={logo} alt="Gwent Tracker" className="h-24 w-auto object-contain self-start mb-2" />
+        <img
+          src={logo}
+          alt="Gwent Tracker"
+          onClick={handleLogoClick}
+          className="h-24 w-auto object-contain self-start mb-2 cursor-pointer"
+        />
 
         {links.map((link) => (
           <NavLink

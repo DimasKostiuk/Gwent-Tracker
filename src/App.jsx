@@ -8,27 +8,36 @@ import DashboardPage from './pages/DashboardPage'
 import CurrentGamePage from './pages/CurrentGamePage'
 import HistoryPage from './pages/HistoryPage'
 import PlayersPage from './pages/PlayersPage'
+import RulesPage from './pages/RulesPage'
+import EasterEggToast from './components/EasterEggToast'
+import RandomEasterEggBanner from './components/RandomEasterEggBanner'
 
 function App() {
   return (
-    <Routes>
-      <Route element={<GuestRoute />}>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-      </Route>
+    <>
+      <Routes>
+        <Route path="/rules" element={<RulesPage />} />
 
-      <Route element={<ProtectedRoute />}>
-        <Route element={<AppLayout />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/game" element={<CurrentGamePage />} />
-          <Route path="/history" element={<HistoryPage />} />
-          <Route path="/players" element={<PlayersPage />} />
+        <Route element={<GuestRoute />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
         </Route>
-      </Route>
 
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/game" element={<CurrentGamePage />} />
+            <Route path="/history" element={<HistoryPage />} />
+            <Route path="/players" element={<PlayersPage />} />
+          </Route>
+        </Route>
+
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+      <EasterEggToast />
+      <RandomEasterEggBanner />
+    </>
   )
 }
 
