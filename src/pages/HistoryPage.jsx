@@ -1,18 +1,52 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
-import { getGameRounds, getMyGames } from '../lib/api'
-import { avatarColor, getInitials } from '../lib/avatar'
+import { useGameInvite } from '../lib/GameInviteContext'
+import { deleteGame, getGameRounds, getMyGames } from '../lib/api'
 import { formatDate, formatDuration } from '../lib/format'
+import { getGameStatus } from '../lib/stats'
+import ConfirmDialog from '../components/ConfirmDialog'
+
+const MONTHS = [
+  'Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
+  'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень',
+]
+
+const STATUS_META = {
+  win: { label: 'Перемога', badge: 'text-green-400', bar: 'bg-green-500' },
+  loss: { label: 'Поразка', badge: 'text-red-400', bar: 'bg-red-500' },
+  draw: { label: 'Нічия', badge: 'text-sky-400', bar: 'bg-sky-400' },
+  incomplete: { label: 'Незавершена', badge: 'text-amber-400', bar: 'bg-amber-400' },
+}
+
+const FILTERS = [
+  { key: 'all', label: 'Усі' },
+  { key: 'win', label: 'Перемоги' },
+  { key: 'loss', label: 'Поразки' },
+  { key: 'draw', label: 'Нічиї' },
+  { key: 'incomplete', label: 'Незавершені' },
+]
 
 export default function HistoryPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
+  const { activeInvite, sendInvite } = useGameInvite()
+  const [searchParams] = useSearchParams()
+
   const [games, setGames] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const [expandedId, setExpandedId] = useState(null)
+  const [search, setSearch] = useState(() => searchParams.get('opponent') || '')
+  const [filter, setFilter] = useState('all')
+
+  const [expandedIds, setExpandedIds] = useState(new Set())
   const [roundsByGame, setRoundsByGame] = useState({})
-  const [roundsLoading, setRoundsLoading] = useState(false)
+  const [roundsLoadingId, setRoundsLoadingId] = useState(null)
+
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+  const [actionError, setActionError] = useState(null)
 
   useEffect(() => {
     getMyGames(user.id)
@@ -21,113 +55,305 @@ export default function HistoryPage() {
       .finally(() => setLoading(false))
   }, [user.id])
 
-  async function toggleExpand(game) {
-    if (expandedId === game.id) {
-      setExpandedId(null)
-      return
+  const counts = useMemo(() => {
+    const c = { all: games.length, win: 0, loss: 0, draw: 0, incomplete: 0 }
+    for (const g of games) c[getGameStatus(g, user.id)]++
+    return c
+  }, [games, user.id])
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    return games.filter((g) => {
+      if (filter !== 'all' && getGameStatus(g, user.id) !== filter) return false
+      if (term) {
+        const opponent = g.player1_id === user.id ? g.player2 : g.player1
+        if (!opponent.display_name.toLowerCase().includes(term)) return false
+      }
+      return true
+    })
+  }, [games, filter, search, user.id])
+
+  const groups = useMemo(() => {
+    const list = []
+    for (const g of filtered) {
+      const d = new Date(g.finished_at)
+      const key = `${d.getFullYear()}-${d.getMonth()}`
+      let group = list.find((x) => x.key === key)
+      if (!group) {
+        group = { key, label: `${MONTHS[d.getMonth()]} ${d.getFullYear()}`.toUpperCase(), games: [] }
+        list.push(group)
+      }
+      group.games.push(g)
     }
-    setExpandedId(game.id)
-    if (roundsByGame[game.id]) return
-    setRoundsLoading(true)
+    return list
+  }, [filtered])
+
+  async function fetchRoundsIfMissing(gameId) {
+    if (roundsByGame[gameId]) return
+    setRoundsLoadingId(gameId)
     try {
-      const rounds = await getGameRounds(game.id)
-      setRoundsByGame((prev) => ({ ...prev, [game.id]: rounds }))
+      const rounds = await getGameRounds(gameId)
+      setRoundsByGame((prev) => ({ ...prev, [gameId]: rounds }))
     } catch (err) {
       setError(err.message)
     } finally {
-      setRoundsLoading(false)
+      setRoundsLoadingId(null)
     }
   }
 
-  return (
-    <div className="max-w-2xl mx-auto flex flex-col gap-5">
-      <h1 className="text-2xl font-bold text-zinc-100">Історія ігор</h1>
+  async function toggleExpand(game) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(game.id)) next.delete(game.id)
+      else next.add(game.id)
+      return next
+    })
+    await fetchRoundsIfMissing(game.id)
+  }
 
-      {loading && <p className="text-zinc-500">Завантаження...</p>}
-      {error && <p className="text-red-400 text-sm">{error}</p>}
-      {!loading && !error && games.length === 0 && (
-        <p className="text-zinc-500">Ти ще не зіграв жодної гри.</p>
+  const allExpanded = filtered.length > 0 && filtered.every((g) => expandedIds.has(g.id))
+
+  async function handleToggleExpandAll() {
+    if (allExpanded) {
+      setExpandedIds(new Set())
+      return
+    }
+    setExpandedIds(new Set(filtered.map((g) => g.id)))
+    const missing = filtered.filter((g) => !roundsByGame[g.id])
+    if (missing.length > 0) {
+      const results = await Promise.all(
+        missing.map((g) => getGameRounds(g.id).then((r) => [g.id, r]).catch(() => [g.id, []])),
+      )
+      setRoundsByGame((prev) => {
+        const next = { ...prev }
+        for (const [id, rounds] of results) next[id] = rounds
+        return next
+      })
+    }
+  }
+
+  async function handleRematch(opponentId) {
+    setActionError(null)
+    try {
+      await sendInvite(opponentId)
+      navigate('/game')
+    } catch (err) {
+      setActionError(err.message)
+    }
+  }
+
+  async function handleConfirmDelete() {
+    setDeleting(true)
+    try {
+      await deleteGame(confirmingDeleteId)
+      setGames((prev) => prev.filter((g) => g.id !== confirmingDeleteId))
+      setConfirmingDeleteId(null)
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  if (loading) return <p className="text-stone-500">Завантаження...</p>
+  if (error) return <p className="text-red-400 text-sm">{error}</p>
+
+  return (
+    <div className="max-w-4xl mx-auto w-full flex flex-col gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-stone-500">Архів партій</p>
+          <h1 className="text-4xl text-amber-50">Історія ігор</h1>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Пошук за суперником..."
+            className="bg-stone-950 border border-stone-700 rounded-md px-3 py-2 text-stone-100 text-sm placeholder-stone-600"
+          />
+          <button
+            onClick={handleToggleExpandAll}
+            disabled={filtered.length === 0}
+            className="px-4 py-2 rounded-md border border-stone-700 hover:border-stone-500 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-stone-200 text-sm whitespace-nowrap"
+          >
+            {allExpanded ? 'Згорнути все' : 'Розгорнути все'}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-2 flex-wrap">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`px-3 py-1.5 rounded-md border text-sm cursor-pointer ${
+                filter === f.key
+                  ? 'bg-amber-500 border-amber-500 text-stone-950 font-semibold'
+                  : 'border-stone-700 text-stone-300 hover:border-stone-500'
+              }`}
+            >
+              {f.label} <span className="opacity-70">{counts[f.key]}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-stone-500">
+          Показано {filtered.length} з {games.length} партій
+        </p>
+      </div>
+
+      {actionError && <p className="text-red-400 text-sm">{actionError}</p>}
+
+      {games.length === 0 && (
+        <p className="text-stone-500 text-center py-10">Ти ще не зіграв жодної гри.</p>
+      )}
+      {games.length > 0 && filtered.length === 0 && (
+        <p className="text-stone-500 text-center py-10">
+          Нічого не знайдено за цим фільтром чи пошуком.
+        </p>
       )}
 
-      <ul className="flex flex-col gap-2">
-        {games.map((game) => {
-          const isPlayer1 = game.player1_id === user.id
-          const opponent = isPlayer1 ? game.player2 : game.player1
-          const myFaction = isPlayer1 ? game.player1_faction : game.player2_faction
-          const opponentFaction = isPlayer1 ? game.player2_faction : game.player1_faction
-          const myRounds = isPlayer1 ? game.player1_rounds_won : game.player2_rounds_won
-          const opponentRounds = isPlayer1 ? game.player2_rounds_won : game.player1_rounds_won
-          const isWin = game.winner_id === user.id
-          const isExpanded = expandedId === game.id
-          const rounds = roundsByGame[game.id]
-
+      <div className="flex flex-col gap-6">
+        {groups.map((group) => {
+          const wins = group.games.filter((g) => getGameStatus(g, user.id) === 'win').length
+          const losses = group.games.filter((g) => getGameStatus(g, user.id) === 'loss').length
+          const draws = group.games.filter((g) => getGameStatus(g, user.id) === 'draw').length
           return (
-            <li key={game.id} className="bg-zinc-900 border border-zinc-800 rounded-md overflow-hidden">
-              <button
-                onClick={() => toggleExpand(game)}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-zinc-800/50"
-              >
-                <span
-                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 ${avatarColor(opponent.display_name)}`}
-                >
-                  {getInitials(opponent.display_name)}
+            <div key={group.key}>
+              <div className="flex items-center justify-between text-xs uppercase tracking-widest text-stone-500 border-b border-stone-800 pb-2 mb-2">
+                <span>{group.label}</span>
+                <span className="font-mono">
+                  {wins}-{losses}-{draws}
                 </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-zinc-100 font-medium truncate">
-                      проти {opponent.display_name}
-                    </p>
-                    <span className="font-mono font-semibold text-zinc-100">
-                      {myRounds} : {opponentRounds}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5">
-                    <span
-                      className={`px-1.5 py-0.5 rounded font-medium ${
-                        isWin ? 'bg-green-900 text-green-400' : 'bg-red-950 text-red-400'
-                      }`}
-                    >
-                      {isWin ? 'Перемога' : 'Поразка'}
-                    </span>
-                    <span>{myFaction} проти {opponentFaction}</span>
-                    <span>·</span>
-                    <span>{formatDate(game.finished_at)}</span>
-                    <span>·</span>
-                    <span>{formatDuration(game.started_at, game.finished_at)}</span>
-                  </div>
-                </div>
-                <span className="text-zinc-600 text-xs shrink-0">{isExpanded ? '▲' : '▼'}</span>
-              </button>
+              </div>
+              <div className="flex flex-col gap-2">
+                {group.games.map((game) => {
+                  const isPlayer1 = game.player1_id === user.id
+                  const opponent = isPlayer1 ? game.player2 : game.player1
+                  const myFaction = isPlayer1 ? game.player1_faction : game.player2_faction
+                  const opponentFaction = isPlayer1 ? game.player2_faction : game.player1_faction
+                  const myRounds = isPlayer1 ? game.player1_rounds_won : game.player2_rounds_won
+                  const opponentRounds = isPlayer1 ? game.player2_rounds_won : game.player1_rounds_won
+                  const status = getGameStatus(game, user.id)
+                  const meta = STATUS_META[status]
+                  const isExpanded = expandedIds.has(game.id)
+                  const rounds = roundsByGame[game.id]
 
-              {isExpanded && (
-                <div className="border-t border-zinc-800 px-4 py-3">
-                  {roundsLoading && !rounds && <p className="text-zinc-500 text-sm">Завантаження...</p>}
-                  {rounds && (
-                    <ul className="flex flex-col gap-1">
-                      {rounds.map((r) => {
-                        const myPoints = isPlayer1 ? r.player1_points : r.player2_points
-                        const opponentPoints = isPlayer1 ? r.player2_points : r.player1_points
-                        const roundWin = r.round_winner_id === user.id
-                        return (
-                          <li
-                            key={r.id}
-                            className="flex items-center justify-between text-sm font-mono px-2 py-1 rounded bg-zinc-950"
-                          >
-                            <span className="text-zinc-500">Раунд {r.round_number}</span>
-                            <span className={roundWin ? 'text-green-400' : 'text-red-400'}>
-                              {myPoints} : {opponentPoints}
-                            </span>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </li>
+                  return (
+                    <div key={game.id} className="border border-stone-800 rounded-md overflow-hidden">
+                      <button
+                        onClick={() => toggleExpand(game)}
+                        className="w-full flex items-stretch text-left hover:bg-stone-900/50 cursor-pointer"
+                      >
+                        <span className={`w-1 shrink-0 ${meta.bar}`} />
+                        <div className="flex-1 min-w-0 flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-1 px-4 py-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-stone-100 truncate">проти {opponent.display_name}</p>
+                            <p className="text-xs text-stone-500 truncate">
+                              {myFaction} проти {opponentFaction}
+                            </p>
+                          </div>
+                          <p className={`text-xs uppercase tracking-wide shrink-0 ${meta.badge}`}>
+                            {meta.label}
+                          </p>
+                          <p className="text-xs text-stone-500 shrink-0 hidden sm:block">
+                            {formatDate(game.finished_at)} · {formatDuration(game.started_at, game.finished_at)}
+                          </p>
+                          <p className="font-mono text-xl text-stone-100 shrink-0">
+                            {myRounds} : {opponentRounds}
+                          </p>
+                          <span className="text-stone-600 text-xs shrink-0">{isExpanded ? '▲' : '▼'}</span>
+                        </div>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="border-t border-stone-800 px-4 py-3 flex flex-col gap-3">
+                          {roundsLoadingId === game.id && !rounds && (
+                            <p className="text-stone-500 text-sm">Завантаження...</p>
+                          )}
+                          {rounds && rounds.length > 0 && (
+                            <div className="flex flex-col gap-2">
+                              {rounds.map((r) => {
+                                const myPoints = isPlayer1 ? r.player1_points : r.player2_points
+                                const oppPoints = isPlayer1 ? r.player2_points : r.player1_points
+                                const total = myPoints + oppPoints || 1
+                                const myShare = Math.round((myPoints / total) * 100)
+                                const barColor =
+                                  r.round_winner_id === null
+                                    ? 'bg-stone-400'
+                                    : r.round_winner_id === user.id
+                                      ? 'bg-green-500'
+                                      : 'bg-red-500'
+                                return (
+                                  <div key={r.id} className="flex items-center gap-3">
+                                    <span className="text-xs text-stone-500 w-16 shrink-0">
+                                      Раунд {r.round_number}
+                                    </span>
+                                    <div className="flex-1 h-2 bg-stone-800 rounded-full overflow-hidden">
+                                      <div className={`h-full ${barColor}`} style={{ width: `${myShare}%` }} />
+                                    </div>
+                                    <span className="font-mono text-xs text-stone-300 w-14 text-right shrink-0">
+                                      {myPoints}:{oppPoints}
+                                    </span>
+                                  </div>
+                                )
+                              })}
+                              <p className="text-xs text-stone-500 mt-1">
+                                Сума очок:{' '}
+                                <span className="font-mono text-stone-300">
+                                  {rounds.reduce(
+                                    (s, r) => s + (isPlayer1 ? r.player1_points : r.player2_points),
+                                    0,
+                                  )}
+                                  {' : '}
+                                  {rounds.reduce(
+                                    (s, r) => s + (isPlayer1 ? r.player2_points : r.player1_points),
+                                    0,
+                                  )}
+                                </span>
+                              </p>
+                            </div>
+                          )}
+                          {rounds && rounds.length === 0 && (
+                            <p className="text-stone-500 text-sm">Раунди не збережено.</p>
+                          )}
+
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => handleRematch(opponent.id)}
+                              disabled={!!activeInvite}
+                              className="px-3 py-1.5 rounded-md bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-stone-950 text-sm font-semibold"
+                            >
+                              Реванш
+                            </button>
+                            <button
+                              onClick={() => setConfirmingDeleteId(game.id)}
+                              className="px-3 py-1.5 rounded-md border border-red-900 hover:border-red-700 text-red-400 text-sm cursor-pointer"
+                            >
+                              Видалити
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           )
         })}
-      </ul>
+      </div>
+
+      <ConfirmDialog
+        open={!!confirmingDeleteId}
+        title="Видалити гру?"
+        message="Цю дію не можна скасувати — гра назавжди зникне з історії."
+        confirming={deleting}
+        error={confirmingDeleteId ? actionError : null}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmingDeleteId(null)}
+      />
     </div>
   )
 }

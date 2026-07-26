@@ -12,10 +12,10 @@ export default function ConfirmDialog({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="w-full max-w-sm bg-zinc-900 border border-zinc-700 rounded-lg p-5 flex flex-col gap-4">
-        <h2 className="text-lg font-semibold text-zinc-100">{title}</h2>
-        <p className="text-sm text-zinc-400 whitespace-pre-line">{message}</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+      <div className="w-full max-w-sm bg-stone-950 border border-stone-700 rounded-lg p-5 flex flex-col gap-4">
+        <h2 className="text-xl text-amber-50">{title}</h2>
+        <p className="text-sm text-stone-400 whitespace-pre-line">{message}</p>
         {error && (
           <p className="text-sm bg-red-950 border border-red-800 text-red-300 rounded-md px-3 py-2">
             {error}
@@ -25,14 +25,14 @@ export default function ConfirmDialog({
           <button
             onClick={onCancel}
             disabled={confirming}
-            className="px-4 py-2 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-sm disabled:opacity-60"
+            className="px-4 py-2 rounded-md border border-stone-700 hover:border-stone-500 text-stone-200 text-sm disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
           >
             {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
             disabled={confirming}
-            className="px-4 py-2 rounded-md bg-red-700 hover:bg-red-600 text-white text-sm font-medium disabled:opacity-60"
+            className="px-4 py-2 rounded-md bg-amber-500 hover:bg-amber-400 text-stone-950 text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
           >
             {confirming ? 'Зачекайте...' : confirmLabel}
           </button>

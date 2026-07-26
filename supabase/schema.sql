@@ -56,6 +56,8 @@ create table if not exists games (
   player1_rounds_won int not null default 0,
   player2_rounds_won int not null default 0,
   winner_id uuid references profiles (id) on delete set null,
+  is_draw boolean not null default false,
+  is_incomplete boolean not null default false,
   started_at timestamptz not null,
   finished_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
@@ -87,6 +89,9 @@ create policy "authenticated users can read all games" on games
 
 create policy "participants can insert their own game" on games
   for insert with check (auth.uid() = player1_id or auth.uid() = player2_id);
+
+create policy "participants can delete their own game" on games
+  for delete using (auth.uid() = player1_id or auth.uid() = player2_id);
 
 create policy "authenticated users can read all game_rounds" on game_rounds
   for select using (auth.role() = 'authenticated');

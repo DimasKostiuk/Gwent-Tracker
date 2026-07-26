@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { supabase } from './supabaseClient'
 import { useAuth } from './AuthContext'
 import { saveGame } from './api'
+import { resolveRoundWinner } from './gwentRules'
 
 const GameInviteContext = createContext(undefined)
 
@@ -70,7 +71,7 @@ export function GameInviteProvider({ children }) {
       round: r.round,
       myPoints: isInvitee ? r.to_points : r.from_points,
       opponentPoints: isInvitee ? r.from_points : r.to_points,
-      iWon: r.winner_id === user?.id,
+      result: r.winner_id === null ? 'tie' : r.winner_id === user?.id ? 'win' : 'loss',
     }))
   }, [activeInvite, isInvitee, user?.id])
 
@@ -122,11 +123,22 @@ export function GameInviteProvider({ children }) {
     await reload()
   }
 
-  async function finishRound() {
-    const { from_points: fp, to_points: tp, current_round, from_user_id, to_user_id } = activeInvite
-    if (fp === tp) throw new Error('Раунд не може закінчитись внічию — очки мають відрізнятись.')
+  async function finishRound({ forceTie = false } = {}) {
+    const {
+      from_points: fp,
+      to_points: tp,
+      from_faction: ff,
+      to_faction: tf,
+      current_round,
+      from_user_id,
+      to_user_id,
+    } = activeInvite
 
-    const winnerId = fp > tp ? from_user_id : to_user_id
+    // A forced tie still respects Nilfgaard's leader ability — reusing the
+    // resolver with equal points triggers the same tie-break rule.
+    const winner = forceTie ? resolveRoundWinner(0, 0, ff, tf) : resolveRoundWinner(fp, tp, ff, tf)
+    const winnerId = winner === 'tie' ? null : winner === 'a' ? from_user_id : to_user_id
+
     const newRounds = [
       ...(activeInvite.rounds || []),
       { round: current_round, from_points: fp, to_points: tp, winner_id: winnerId },
@@ -140,7 +152,26 @@ export function GameInviteProvider({ children }) {
     await reload()
   }
 
-  async function finishGame() {
+  async function undoLastRound() {
+    const existing = activeInvite.rounds || []
+    if (existing.length === 0) return
+    const last = existing[existing.length - 1]
+    const newRounds = existing.slice(0, -1)
+
+    const { error } = await supabase
+      .from('game_invites')
+      .update({
+        rounds: newRounds,
+        from_points: last.from_points,
+        to_points: last.to_points,
+        current_round: activeInvite.current_round - 1,
+      })
+      .eq('id', activeInvite.id)
+    if (error) throw error
+    await reload()
+  }
+
+  async function finishGame(isIncomplete = false) {
     const player1 = { id: activeInvite.from_user_id, name: activeInvite.from_profile.display_name }
     const player2 = { id: activeInvite.to_user_id, name: activeInvite.to_profile.display_name }
     const gameRounds = (activeInvite.rounds || []).map((r) => ({
@@ -156,6 +187,7 @@ export function GameInviteProvider({ children }) {
       player2Faction: activeInvite.to_faction,
       rounds: gameRounds,
       startedAt: activeInvite.game_started_at,
+      isIncomplete,
     })
 
     const { error } = await supabase
@@ -188,6 +220,7 @@ export function GameInviteProvider({ children }) {
     setMyFaction,
     setMyPoints,
     finishRound,
+    undoLastRound,
     finishGame,
     dismiss,
   }

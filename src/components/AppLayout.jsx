@@ -3,31 +3,26 @@ import Sidebar from './Sidebar'
 import { useAuth } from '../lib/AuthContext'
 import { GameInviteProvider } from '../lib/GameInviteContext'
 import InvitePopup from './InvitePopup'
+import logo from '../assets/gwent-tracker-logo.png'
 
 export default function AppLayout() {
-  const { user, signOut } = useAuth()
+  const { signOut } = useAuth()
 
   return (
     <GameInviteProvider>
       <div className="min-h-screen flex">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="border-b border-zinc-800 bg-zinc-950 px-4 py-3 flex items-center justify-between">
-            <span className="text-lg font-semibold text-zinc-100 md:hidden">Gwent Tracker</span>
-            <span className="hidden md:block" />
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-zinc-400">
-                {user?.user_metadata?.display_name || user?.email}
-              </span>
-              <button
-                onClick={signOut}
-                className="px-3 py-1.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-sm text-zinc-100"
-              >
-                Вийти
-              </button>
-            </div>
+          <header className="md:hidden border-b border-stone-800 bg-stone-950 px-4 py-2 flex items-center justify-between">
+            <img src={logo} alt="Gwent Tracker" className="h-14 w-auto object-contain" />
+            <button
+              onClick={signOut}
+              className="px-3 py-1.5 rounded-md bg-stone-900 hover:bg-stone-800 text-sm text-stone-200 cursor-pointer"
+            >
+              Вийти
+            </button>
           </header>
-          <main className="flex-1 px-4 md:px-10 py-4 md:py-2 pb-20 md:pb-6">
+          <main className="flex-1 min-w-0 px-4 md:px-6 py-4 md:py-8 pb-20 md:pb-8">
             <Outlet />
           </main>
         </div>
