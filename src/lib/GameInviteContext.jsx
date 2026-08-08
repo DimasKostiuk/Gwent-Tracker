@@ -30,23 +30,47 @@ export function GameInviteProvider({ children }) {
       setActiveInvite(null)
       return
     }
+
+    let channel
+
+    function subscribe() {
+      channel = supabase
+        .channel(`game_invites:${user.id}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'game_invites', filter: `to_user_id=eq.${user.id}` },
+          reload,
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'game_invites', filter: `from_user_id=eq.${user.id}` },
+          reload,
+        )
+        .subscribe()
+    }
+
     reload()
+    subscribe()
 
-    const channel = supabase
-      .channel(`game_invites:${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'game_invites', filter: `to_user_id=eq.${user.id}` },
-        reload,
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'game_invites', filter: `from_user_id=eq.${user.id}` },
-        reload,
-      )
-      .subscribe()
+    // Mobile browsers often drop the realtime websocket while the phone is
+    // locked/backgrounded, and don't always reconnect on their own. When the
+    // tab becomes visible again, resync the data and re-open the channel so
+    // buttons (e.g. accepting an invite) work without a manual page reload.
+    function handleVisibility() {
+      if (document.visibilityState !== 'visible') return
+      reload()
+      if (channel) supabase.removeChannel(channel)
+      subscribe()
+    }
 
-    return () => supabase.removeChannel(channel)
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleVisibility)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleVisibility)
+      if (channel) supabase.removeChannel(channel)
+    }
   }, [user, reload])
 
   const isInvitee = activeInvite?.to_user_id === user?.id

@@ -49,6 +49,23 @@ export default function CurrentGamePage() {
   const [busy, setBusy] = useState(false)
 
   const [gameNumber, setGameNumber] = useState(null)
+  const [now, setNow] = useState(() => Date.now())
+
+  const isPlayingPhase = activeInvite?.status === 'playing'
+
+  useEffect(() => {
+    if (!isPlayingPhase) return
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [isPlayingPhase])
+
+  const elapsedSeconds =
+    isPlayingPhase && activeInvite?.game_started_at
+      ? Math.max(0, Math.floor((now - new Date(activeInvite.game_started_at).getTime()) / 1000))
+      : 0
+  const durationLabel = `${String(Math.floor(elapsedSeconds / 60)).padStart(2, '0')}:${String(
+    elapsedSeconds % 60,
+  ).padStart(2, '0')}`
 
   const myRoundsWon = rounds.filter((r) => r.result === 'win').length
   const opponentRoundsWon = rounds.filter((r) => r.result === 'loss').length
@@ -153,7 +170,7 @@ export default function CurrentGamePage() {
         <p className="text-lg">
           {myWins > opponentWins && <span className="text-green-500 font-semibold">Ти переміг!</span>}
           {myWins < opponentWins && (
-            <span className="text-red-500 font-semibold">Переміг {opponent?.display_name}</span>
+            <span className="text-red-500 font-semibold">Переможець {opponent?.display_name}</span>
           )}
           {myWins === opponentWins && <span className="text-sky-400 font-semibold">Нічия!</span>}
         </p>
@@ -220,6 +237,11 @@ export default function CurrentGamePage() {
               Завершити гру
             </button>
           </div>
+        </div>
+
+        <div className="md:hidden flex items-center gap-1.5 text-xs text-stone-400 -mt-1">
+          <span className="inline-block w-1.5 h-1.5 rotate-45 bg-amber-400 shrink-0" />
+          Тривалість: <span className="font-mono text-amber-400">{durationLabel}</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-2">

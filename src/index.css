@@ -16,3 +16,10 @@ body {
   color: #e7e5e4;
   font-family: "Cormorant Garamond", "Times New Roman", serif;
 }
+
+/* Skip the browser's ~300ms double-tap-to-zoom detection delay on tap
+   targets — noticeable as input lag on the points calculator keypad. */
+button,
+a {
+  touch-action: manipulation;
+}

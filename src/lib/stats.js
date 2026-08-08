@@ -35,12 +35,11 @@ export function computeLongestStreak(games, userId) {
   return longest
 }
 
-// Oldest -> newest, so it reads left-to-right like a form guide.
+// Newest -> oldest, left to right (most recent game first).
 export function computeForm(games, userId, count = 12) {
   return games
     .slice(0, count)
     .map((g) => gameOutcome(g, userId))
-    .reverse()
 }
 
 // Builds one card per registered profile (excluding yourself), enriched with

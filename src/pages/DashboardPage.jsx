@@ -185,15 +185,17 @@ export default function DashboardPage() {
       </div>
 
       <div className="border border-stone-800 rounded-lg p-4 flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <span className="text-xs uppercase tracking-widest text-stone-500">
             Форма · останні {form.length}
           </span>
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5 w-full sm:w-auto">
             {form.map((outcome, i) => (
               <span
                 key={i}
-                className={`w-7 h-7 flex items-center justify-center rounded text-xs font-bold border ${FORM_STYLES[outcome]}`}
+                className={`h-7 flex-1 sm:flex-none sm:w-7 items-center justify-center rounded text-xs font-bold border ${FORM_STYLES[outcome]} ${
+                  i >= 9 ? 'hidden sm:flex' : 'flex'
+                }`}
               >
                 {FORM_LABEL[outcome]}
               </span>

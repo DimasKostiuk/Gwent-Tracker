@@ -91,15 +91,13 @@ export default function PointsCalculator({ playerName, initialValue, onConfirm, 
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => pressOp('-')}
-            disabled={!isTyping}
-            className="py-2.5 rounded-md border border-red-900 hover:border-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-red-400 font-bold text-lg cursor-pointer"
+            className="py-2.5 rounded-md border border-red-900 hover:border-red-700 text-red-400 font-bold text-lg cursor-pointer"
           >
             −
           </button>
           <button
             onClick={() => pressOp('+')}
-            disabled={!isTyping}
-            className="py-2.5 rounded-md border border-green-900 hover:border-green-700 disabled:opacity-40 disabled:cursor-not-allowed text-green-400 font-bold text-lg cursor-pointer"
+            className="py-2.5 rounded-md border border-green-900 hover:border-green-700 text-green-400 font-bold text-lg cursor-pointer"
           >
             +
           </button>
