@@ -5,6 +5,7 @@ import { useGameInvite } from '../lib/GameInviteContext'
 import { deleteGame, getGameRounds, getMyGames } from '../lib/api'
 import { formatDate, formatDuration } from '../lib/format'
 import { getGameStatus } from '../lib/stats'
+import { getFactionTheme } from '../lib/factionThemes'
 import ConfirmDialog from '../components/ConfirmDialog'
 
 const MONTHS = [
@@ -233,6 +234,8 @@ export default function HistoryPage() {
                   const opponent = isPlayer1 ? game.player2 : game.player1
                   const myFaction = isPlayer1 ? game.player1_faction : game.player2_faction
                   const opponentFaction = isPlayer1 ? game.player2_faction : game.player1_faction
+                  const myFactionColor = getFactionTheme(myFaction)?.color
+                  const opponentFactionColor = getFactionTheme(opponentFaction)?.color
                   const myRounds = isPlayer1 ? game.player1_rounds_won : game.player2_rounds_won
                   const opponentRounds = isPlayer1 ? game.player2_rounds_won : game.player1_rounds_won
                   const status = getGameStatus(game, user.id)
@@ -252,7 +255,8 @@ export default function HistoryPage() {
                             <div className="min-w-0">
                               <p className="text-stone-100 truncate">проти {opponent.display_name}</p>
                               <p className="text-xs text-stone-500 truncate">
-                                {myFaction} проти {opponentFaction}
+                                <span style={{ color: myFactionColor }}>{myFaction}</span> проти{' '}
+                                <span style={{ color: opponentFactionColor }}>{opponentFaction}</span>
                               </p>
                             </div>
                             <p className={`text-xs uppercase tracking-wide shrink-0 ${meta.badge}`}>

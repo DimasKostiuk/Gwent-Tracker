@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { avatarColor, getInitials } from '../lib/avatar'
 import { ROUNDS_TO_WIN } from '../lib/gwentRules'
+import { getFactionTheme } from '../lib/factionThemes'
 import PointsCalculator from './PointsCalculator'
 
 const ROUND_SLOT_STYLES = {
@@ -23,26 +24,75 @@ export default function PlayerPanel({
 }) {
   const [calculatorOpen, setCalculatorOpen] = useState(false)
   const isRight = align === 'right'
+  const theme = getFactionTheme(faction)
+  // Exposed as a CSS var (not a Tailwind class) so faction color can tint
+  // buttons/borders with static, build-time-safe class names like
+  // `border-[color:var(--accent)]` — Tailwind can't handle a class name
+  // built from a runtime value, but it can style-var reference just fine.
+  const accentVars = { '--accent': theme?.color ?? '#78716c' }
+  // Faint vertical wash across the whole card so it doesn't read as one flat
+  // outlined box — same accent, spread thin, fading out toward the middle.
+  const cardGradient = theme
+    ? { backgroundImage: `linear-gradient(165deg, ${theme.color}20 0%, transparent 55%)` }
+    : undefined
+  // Slightly stronger version for the small interactive blocks (buttons /
+  // point display) so each one reads as its own lit surface.
+  const controlGradient = theme
+    ? { backgroundImage: `linear-gradient(180deg, ${theme.color}2e 0%, ${theme.color}0a 100%)` }
+    : undefined
 
   return (
-    <div className="min-w-0 border border-stone-800 rounded-lg p-3 sm:p-4 flex flex-col gap-3">
+    <div
+      className={`relative overflow-hidden min-w-0 bg-stone-950 border p-3 sm:p-4 flex flex-col gap-3 ${
+        isRight ? 'pr-7 sm:pr-8' : 'pl-7 sm:pl-8'
+      }`}
+      style={{ borderColor: theme?.color ?? undefined, ...accentVars, ...cardGradient }}
+    >
+      {theme && (
+        <img
+          src={theme.art}
+          alt=""
+          aria-hidden="true"
+          className={`absolute top-0 h-full w-7 sm:w-8 object-cover pointer-events-none select-none ${isRight ? 'right-0' : 'left-0'}`}
+          style={{ transform: isRight ? 'scaleX(-1)' : undefined }}
+        />
+      )}
+
+      {theme && (
+        <p
+          className={`absolute bottom-1 text-[10px] sm:text-xs italic font-medium whitespace-nowrap pointer-events-none ${
+            isRight ? 'left-2' : 'right-2'
+          }`}
+          style={{ color: theme.color, opacity: 0.9 }}
+        >
+          {theme.quote}
+        </p>
+      )}
+
       <div className={`flex items-center gap-2 min-w-0 ${isRight ? 'flex-row-reverse' : ''}`}>
         <span
-          className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${avatarColor(name)}`}
+          className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${theme ? '' : avatarColor(name)}`}
+          style={theme ? { backgroundColor: theme.color } : undefined}
         >
           {getInitials(name)}
         </span>
         <div className={`min-w-0 flex-1 ${isRight ? 'text-right' : ''}`}>
           <p className="truncate text-stone-100">{name}</p>
-          <p className="truncate text-xs text-stone-500">{faction}</p>
+          <p className="truncate text-xs" style={{ color: theme?.color }}>
+            {!theme && <span className="text-stone-500">{faction}</span>}
+            {theme && faction}
+          </p>
         </div>
         <div className={`flex gap-1 shrink-0 ${isRight ? 'flex-row-reverse' : ''}`}>
           {Array.from({ length: ROUNDS_TO_WIN }, (_, i) => (
             <span
               key={i}
-              className={`inline-block w-2.5 h-2.5 rotate-45 ${
-                i < roundsWon ? 'bg-amber-400' : 'border border-stone-600'
-              }`}
+              className="inline-block w-2 h-2 rotate-45"
+              style={
+                i < roundsWon
+                  ? { backgroundColor: theme?.color ?? '#fbbf24' }
+                  : { border: `1px solid ${theme?.color ?? '#57534e'}`, opacity: 0.5 }
+              }
             />
           ))}
         </div>
@@ -56,7 +106,8 @@ export default function PlayerPanel({
           <button
             onClick={() => onPointsChange(Math.max(0, currentPoints - 1))}
             disabled={disabled}
-            className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-md border border-stone-700 hover:border-stone-500 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-stone-300 text-lg"
+            style={controlGradient}
+            className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 bg-stone-900 border border-[color:var(--accent)]/50 hover:border-[color:var(--accent)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-stone-200 text-lg"
           >
             −
           </button>
@@ -66,12 +117,14 @@ export default function PlayerPanel({
             value={currentPoints}
             disabled={disabled}
             onChange={(e) => onPointsChange(Math.max(0, Number(e.target.value)))}
-            className="w-0 flex-1 min-w-0 bg-transparent border border-stone-700 rounded-md px-1 py-2 text-center text-2xl sm:text-3xl font-semibold text-stone-100 disabled:opacity-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            style={controlGradient}
+            className="w-0 flex-1 min-w-0 bg-stone-900 border border-[color:var(--accent)]/50 px-1 py-2 text-center text-2xl sm:text-3xl font-semibold text-stone-100 disabled:opacity-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <button
             onClick={() => onPointsChange(currentPoints + 1)}
             disabled={disabled}
-            className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-md border border-stone-700 hover:border-stone-500 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-stone-300 text-lg"
+            style={controlGradient}
+            className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 bg-stone-900 border border-[color:var(--accent)]/50 hover:border-[color:var(--accent)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-stone-200 text-lg"
           >
             +
           </button>
@@ -81,9 +134,10 @@ export default function PlayerPanel({
           <button
             onClick={() => setCalculatorOpen(true)}
             disabled={disabled}
-            className="w-full mt-2 px-3 py-2 rounded-md bg-stone-800 border border-stone-700 hover:border-stone-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-stone-300 text-xs font-medium flex items-center justify-center gap-1.5"
+            style={controlGradient}
+            className="w-full mt-2 px-3 py-2 bg-stone-900 border border-[color:var(--accent)]/50 hover:border-[color:var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-stone-300 text-xs font-medium flex items-center justify-center gap-1.5"
           >
-            <span className="inline-block w-1.5 h-1.5 rotate-45 border border-stone-500 shrink-0" />
+            <span className="inline-block w-1.5 h-1.5 rotate-45 border border-[color:var(--accent)] shrink-0" />
             Калькулятор очок
           </button>
         )}
@@ -92,7 +146,7 @@ export default function PlayerPanel({
           {roundSlots.map((slot, i) => (
             <div
               key={i}
-              className={`rounded border px-1 py-1.5 text-center ${
+              className={`border px-1 py-1.5 text-center ${
                 slot ? ROUND_SLOT_STYLES[slot.result] : ROUND_SLOT_STYLES.empty
               }`}
             >
@@ -101,6 +155,7 @@ export default function PlayerPanel({
             </div>
           ))}
         </div>
+
       </div>
 
       {calculatorOpen && (
