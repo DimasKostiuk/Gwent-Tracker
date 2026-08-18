@@ -42,6 +42,21 @@ export function computeForm(games, userId, count = 12) {
     .map((g) => gameOutcome(g, userId))
 }
 
+// Faction play counts for this player, most-played first — the full
+// breakdown behind favoriteFaction (used for the Dashboard's favorite-faction
+// card, which shows more than just the top pick).
+export function computeFactionBreakdown(games, userId) {
+  const counts = {}
+  for (const g of games) {
+    const isPlayer1 = g.player1_id === userId
+    const faction = isPlayer1 ? g.player1_faction : g.player2_faction
+    counts[faction] = (counts[faction] || 0) + 1
+  }
+  return Object.entries(counts)
+    .map(([faction, count]) => ({ faction, count }))
+    .sort((a, b) => b.count - a.count)
+}
+
 // Builds one card per registered profile (excluding yourself), enriched with
 // your head-to-head record. Profiles you've never played show zeroed/null
 // stats rather than being left out entirely.
