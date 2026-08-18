@@ -6,7 +6,10 @@ const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
 // never swaps the app shell out from under an in-progress live game, the
 // player picks the moment by pressing "Оновити".
 export default function PwaUpdateToast() {
-  const { needRefresh, updateServiceWorker } = useRegisterSW({
+  const {
+    needRefresh: [needRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
     onRegisteredSW(_url, registration) {
       if (!registration) return
       setInterval(() => registration.update(), UPDATE_CHECK_INTERVAL_MS)
