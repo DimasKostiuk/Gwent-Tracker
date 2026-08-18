@@ -19,7 +19,7 @@ export default function PwaUpdateToast() {
   if (!needRefresh) return null
 
   return (
-    <div className="fixed top-4 inset-x-0 z-[100] flex justify-center px-4">
+    <div className="fixed top-[calc(1rem_+_env(safe-area-inset-top))] inset-x-0 z-[100] flex justify-center px-4">
       <div className="flex items-center gap-3 bg-stone-900 border border-amber-500/50 text-amber-100 text-sm px-3 py-1.5 rounded-md shadow-lg">
         Доступне оновлення
         <button
