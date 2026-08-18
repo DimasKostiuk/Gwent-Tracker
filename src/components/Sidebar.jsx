@@ -6,13 +6,15 @@ import { getMyGames, getProfiles } from '../lib/api'
 import { computeCurrentStreak } from '../lib/stats'
 import { getInitials } from '../lib/avatar'
 import { showEasterEgg } from '../lib/easterEgg'
+import { randomSignOutQuote } from '../lib/signOutQuotes'
+import ConfirmDialog from './ConfirmDialog'
 import logo from '../assets/gwent-tracker-logo.png'
 
 const links = [
-  { to: '/dashboard', label: 'Дашборд' },
-  { to: '/game', label: 'Поточна гра' },
-  { to: '/history', label: 'Історія' },
-  { to: '/players', label: 'Гравці' },
+  { to: '/dashboard', label: 'Дашборд', shortLabel: 'Дашборд' },
+  { to: '/game', label: 'Поточна гра', shortLabel: 'Гра' },
+  { to: '/history', label: 'Історія', shortLabel: 'Історія' },
+  { to: '/players', label: 'Гравці', shortLabel: 'Гравці' },
 ]
 
 function Diamond({ active }) {
@@ -79,6 +81,8 @@ export default function Sidebar() {
   const [gamesCount, setGamesCount] = useState(0)
   const [playersCount, setPlayersCount] = useState(0)
   const [now, setNow] = useState(() => Date.now())
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false)
+  const [signOutQuote, setSignOutQuote] = useState('')
   const logoClickTimestamps = useRef([])
 
   function handleLogoClick(e) {
@@ -163,7 +167,15 @@ export default function Sidebar() {
 
   return (
     <>
-      <nav className="hidden md:flex md:flex-col md:w-52 md:shrink-0 border-r border-stone-800 bg-stone-950 p-3 gap-1">
+      <nav
+        className="hidden md:flex md:sticky md:top-0 md:h-screen md:overflow-y-auto md:flex-col md:w-52 md:shrink-0 border-r border-stone-800 bg-stone-950 p-3 gap-1"
+        style={{
+          // Static, subtle golden wash in the corner — no animation, no
+          // hard edge (a fading radial-gradient, same trick as the ray
+          // glow below, just always-on and much fainter).
+          backgroundImage: 'radial-gradient(circle at 0% 0%, rgba(251,191,36,0.1) 0%, transparent 55%)',
+        }}
+      >
         <img
           src={logo}
           alt="Gwent Tracker"
@@ -195,13 +207,38 @@ export default function Sidebar() {
 
         <div className="mt-6 border border-stone-800 rounded-md p-3">{statBox}</div>
 
+        <div
+          aria-hidden="true"
+          className="sidebar-glow absolute left-1/2 -translate-x-1/2 bottom-12 w-64 h-64 opacity-0 pointer-events-none"
+          style={{
+            // No clip-path — CSS applies `filter` BEFORE `clip-path`, so a
+            // polygon on a blurred element still cuts a hard, unblurred
+            // edge on top of the soft result (that's the sharp star outline
+            // from before). Rays here are just several off-center, unevenly
+            // sized ellipse gradients layered over one central glow — each
+            // one already fades to transparent on its own, so there's no
+            // boundary anywhere left for the blur to reveal.
+            background: [
+              'radial-gradient(ellipse 55% 32% at 50% 22%, rgba(251,191,36,0.5) 0%, transparent 70%)',
+              'radial-gradient(ellipse 26% 48% at 70% 60%, rgba(251,191,36,0.4) 0%, transparent 70%)',
+              'radial-gradient(ellipse 40% 20% at 26% 66%, rgba(251,191,36,0.35) 0%, transparent 70%)',
+              'radial-gradient(ellipse 18% 40% at 22% 28%, rgba(251,191,36,0.3) 0%, transparent 70%)',
+              'radial-gradient(circle at 50% 50%, rgba(251,191,36,0.55) 0%, transparent 60%)',
+            ].join(', '),
+            filter: 'blur(50px)',
+          }}
+        />
+
         <div className="mt-auto pt-4 border-t border-stone-800 flex items-center gap-2">
           <span className="w-8 h-8 rounded-full bg-amber-900 text-amber-200 flex items-center justify-center text-xs font-bold shrink-0">
             {getInitials(name)}
           </span>
           <span className="text-sm text-stone-300 truncate min-w-0 flex-1">{name}</span>
           <button
-            onClick={signOut}
+            onClick={() => {
+              setSignOutQuote(randomSignOutQuote())
+              setConfirmingSignOut(true)
+            }}
             className="ml-auto shrink-0 text-sm text-stone-400 hover:text-stone-100 cursor-pointer"
           >
             Вийти
@@ -209,27 +246,53 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      <nav className="md:hidden fixed bottom-0 pb-[calc(0.75rem_+_env(safe-area-inset-bottom))] left-0 right-0 z-10 border-t border-stone-800 bg-stone-950 flex">
+      <nav className="md:hidden fixed bottom-0 pb-[calc(0.75rem_+_env(safe-area-inset-bottom))] left-0 right-0 z-10 border-t border-amber-900/40 bg-stone-950 flex gap-1.5 px-1.5 pt-1.5">
         {links.map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
             end={link.to === '/dashboard'}
             className={({ isActive }) =>
-              `flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium transition-colors ${
-                isActive ? 'text-amber-400' : 'text-stone-500'
+              `relative flex-1 flex flex-col items-center gap-1.5 py-2.5 border rounded-md overflow-hidden transition-colors ${
+                isActive
+                  ? 'border-amber-500 bg-amber-950/20 shadow-[0_0_14px_rgba(251,191,36,0.35)]'
+                  : 'border-stone-800/70'
               }`
             }
           >
             {({ isActive }) => (
               <>
-                <Diamond active={isActive} />
-                {link.label}
+                <span
+                  className={`inline-block w-2 h-2 rotate-45 shrink-0 ${
+                    isActive
+                      ? 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.85)]'
+                      : 'border border-stone-600'
+                  }`}
+                />
+                <span
+                  className={`text-[10px] uppercase tracking-widest font-medium ${
+                    isActive ? 'text-amber-300' : 'text-stone-500'
+                  }`}
+                >
+                  {link.shortLabel}
+                </span>
+                {isActive && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+                )}
               </>
             )}
           </NavLink>
         ))}
       </nav>
+
+      <ConfirmDialog
+        open={confirmingSignOut}
+        title="Вийти з акаунта?"
+        message={signOutQuote}
+        confirmLabel="Вийти"
+        onConfirm={signOut}
+        onCancel={() => setConfirmingSignOut(false)}
+      />
     </>
   )
 }

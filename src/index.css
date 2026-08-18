@@ -1,6 +1,13 @@
 @import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap");
 @import "tailwindcss";
 
+@theme {
+  /* "Laptop L" (1440px) — between Tailwind's built-in xl (1280) and 2xl
+     (1536). Used by the Dashboard grid to fit all 3 top cards in one row
+     on larger screens without waiting for 2xl. */
+  --breakpoint-laptop-l: 1440px;
+}
+
 :root {
   color-scheme: dark;
 }
@@ -33,5 +40,37 @@ a {
 @media (display-mode: standalone) {
   html {
     touch-action: manipulation;
+  }
+}
+
+/* Sidebar ambient glow: two pulses (fade in, +20% size, +20% opacity, back
+   down, twice), then holds invisible for the rest of a 24s cycle (~15s of
+   silence after the second pulse) before looping. Percentages below are
+   just that timeline as fractions of the total duration — changing the
+   animation's duration alone re-paces the whole thing without touching
+   these. Skipped entirely for reduced-motion — a static glow would still
+   be a idle stand-in for the motion, so it's off rather than simplified. */
+@keyframes sidebar-glow-pulse {
+  0%, 18.75%, 37.5%, 100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1);
+  }
+  3.75%, 22.5% {
+    opacity: 0.35;
+    transform: translateX(-50%) scale(1);
+  }
+  9.375%, 28.125% {
+    opacity: 0.42;
+    transform: translateX(-50%) scale(1.2);
+  }
+  15%, 33.75% {
+    opacity: 0.35;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sidebar-glow {
+    animation: sidebar-glow-pulse 24s ease-in-out infinite;
   }
 }
