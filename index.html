@@ -13,6 +13,18 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Gwent Tracker</title>
+    <script>
+      // Lock pinch/double-tap zoom only when running installed as a PWA
+      // (standalone) — a regular browser tab keeps normal page zoom.
+      (function () {
+        var isStandalone =
+          window.matchMedia('(display-mode: standalone)').matches ||
+          window.navigator.standalone === true
+        if (!isStandalone) return
+        var viewport = document.querySelector('meta[name="viewport"]')
+        if (viewport) viewport.content += ', maximum-scale=1, user-scalable=no'
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
