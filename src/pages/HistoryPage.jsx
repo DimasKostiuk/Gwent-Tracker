@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { useGameInvite } from '../lib/GameInviteContext'
 import { deleteGame, getGameRounds, getMyGames } from '../lib/api'
+import { translateError } from '../lib/errors'
 import { formatDate, formatDuration } from '../lib/format'
 import { getGameStatus } from '../lib/stats'
 import { getFactionTheme } from '../lib/factionThemes'
@@ -52,7 +53,7 @@ export default function HistoryPage() {
   useEffect(() => {
     getMyGames(user.id)
       .then(setGames)
-      .catch((err) => setError(err.message))
+      .catch((err) => setError(translateError(err)))
       .finally(() => setLoading(false))
   }, [user.id])
 
@@ -96,7 +97,7 @@ export default function HistoryPage() {
       const rounds = await getGameRounds(gameId)
       setRoundsByGame((prev) => ({ ...prev, [gameId]: rounds }))
     } catch (err) {
-      setError(err.message)
+      setError(translateError(err))
     } finally {
       setRoundsLoadingId(null)
     }
@@ -139,7 +140,7 @@ export default function HistoryPage() {
       await sendInvite(opponentId)
       navigate('/game')
     } catch (err) {
-      setActionError(err.message)
+      setActionError(translateError(err))
     }
   }
 
@@ -150,7 +151,7 @@ export default function HistoryPage() {
       setGames((prev) => prev.filter((g) => g.id !== confirmingDeleteId))
       setConfirmingDeleteId(null)
     } catch (err) {
-      setActionError(err.message)
+      setActionError(translateError(err))
     } finally {
       setDeleting(false)
     }

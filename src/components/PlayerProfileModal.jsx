@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getMyGames, getRoundsForGames } from '../lib/api'
+import { translateError } from '../lib/errors'
 import { computeOverallPlayerStats } from '../lib/stats'
 import { avatarColor, getInitials } from '../lib/avatar'
 import { formatDate } from '../lib/format'
@@ -41,7 +42,7 @@ export default function PlayerProfileModal({ profile, onClose }) {
         if (!cancelled) setStats(computeOverallPlayerStats(games, rounds, profile.id))
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message)
+        if (!cancelled) setError(translateError(err))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)

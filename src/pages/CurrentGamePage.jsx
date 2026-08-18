@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { useGameInvite } from '../lib/GameInviteContext'
 import { getMyGamesCount, getProfiles } from '../lib/api'
+import { translateError } from '../lib/errors'
 import { FACTIONS } from '../lib/factions'
 import { MAX_ROUNDS, isMatchDecided, resolveRoundWinner } from '../lib/gwentRules'
 import PlayerPanel from '../components/PlayerPanel'
@@ -75,7 +76,7 @@ export default function CurrentGamePage() {
     if (subPhase !== 'inviting') return
     getProfiles()
       .then((data) => setProfiles(data.filter((p) => p.id !== user.id)))
-      .catch((err) => setProfilesError(err.message))
+      .catch((err) => setProfilesError(translateError(err)))
   }, [subPhase, user.id])
 
   useEffect(() => {
@@ -91,7 +92,7 @@ export default function CurrentGamePage() {
     try {
       await setMyFaction(selectedFaction)
     } catch (err) {
-      setActionError(err.message)
+      setActionError(translateError(err))
     } finally {
       setConfirmingFaction(false)
     }
@@ -102,7 +103,7 @@ export default function CurrentGamePage() {
     try {
       await sendInvite(toUserId)
     } catch (err) {
-      setActionError(err.message)
+      setActionError(translateError(err))
     }
   }
 
@@ -118,7 +119,7 @@ export default function CurrentGamePage() {
       await finishRound({ forceTie: pendingForceTie })
       setConfirmingRound(false)
     } catch (err) {
-      setActionError(err.message)
+      setActionError(translateError(err))
     } finally {
       setBusy(false)
     }
@@ -130,7 +131,7 @@ export default function CurrentGamePage() {
       await undoLastRound()
       setConfirmingUndo(false)
     } catch (err) {
-      setActionError(err.message)
+      setActionError(translateError(err))
     } finally {
       setBusy(false)
     }
@@ -144,7 +145,7 @@ export default function CurrentGamePage() {
       setConfirmingGame(false)
       navigate('/dashboard')
     } catch (err) {
-      setActionError(err.message)
+      setActionError(translateError(err))
       setBusy(false)
     }
   }

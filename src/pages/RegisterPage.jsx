@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { translateError } from '../lib/errors'
 import AuthLayout from '../components/AuthLayout'
 
 const STRENGTH = [
@@ -47,7 +48,7 @@ export default function RegisterPage() {
     })
 
     if (error) {
-      setError(error.message)
+      setError(translateError(error))
       setSubmitting(false)
       return
     }

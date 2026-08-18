@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { useGameInvite } from '../lib/GameInviteContext'
 import { getMyGames, getProfiles, getRoundsForGames } from '../lib/api'
+import { translateError } from '../lib/errors'
 import { buildOpponentCards } from '../lib/stats'
 import { avatarColor, getInitials } from '../lib/avatar'
 import { formatDate } from '../lib/format'
@@ -112,7 +113,7 @@ export default function PlayersPage() {
         return getRoundsForGames(gamesData.map((g) => g.id))
       })
       .then(setRounds)
-      .catch((err) => setError(err.message))
+      .catch((err) => setError(translateError(err)))
       .finally(() => setLoading(false))
   }, [user.id])
 
@@ -136,7 +137,7 @@ export default function PlayersPage() {
       await sendInvite(playerId)
       navigate('/game')
     } catch (err) {
-      setActionError(err.message)
+      setActionError(translateError(err))
       setInvitingId(null)
     }
   }
