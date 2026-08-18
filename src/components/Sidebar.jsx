@@ -209,7 +209,7 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      <nav className="md:hidden fixed bottom-0 pb-3 left-0 right-0 z-10 border-t border-stone-800 bg-stone-950 flex">
+      <nav className="md:hidden fixed bottom-0 pb-[calc(0.75rem_+_env(safe-area-inset-bottom))] left-0 right-0 z-10 border-t border-stone-800 bg-stone-950 flex">
         {links.map((link) => (
           <NavLink
             key={link.to}

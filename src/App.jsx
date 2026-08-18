@@ -11,6 +11,7 @@ import PlayersPage from './pages/PlayersPage'
 import RulesPage from './pages/RulesPage'
 import EasterEggToast from './components/EasterEggToast'
 import RandomEasterEggBanner from './components/RandomEasterEggBanner'
+import PwaUpdateToast from './components/PwaUpdateToast'
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
       </Routes>
       <EasterEggToast />
       <RandomEasterEggBanner />
+      <PwaUpdateToast />
     </>
   )
 }

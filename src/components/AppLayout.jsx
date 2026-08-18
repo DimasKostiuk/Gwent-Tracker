@@ -13,7 +13,7 @@ export default function AppLayout() {
       <div className="min-h-screen flex">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="md:hidden border-b border-stone-800 bg-stone-950 px-4 py-2 flex items-center justify-between">
+          <header className="md:hidden border-b border-stone-800 bg-stone-950 px-4 pt-[calc(0.5rem_+_env(safe-area-inset-top))] pb-2 flex items-center justify-between">
             <img src={logo} alt="Gwent Tracker" className="h-14 w-auto object-contain" />
             <button
               onClick={signOut}
