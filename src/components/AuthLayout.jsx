@@ -18,7 +18,7 @@ export default function AuthLayout({ mode, eyebrow, title, children }) {
         className="pointer-events-none select-none absolute -right-52 top-1/4 w-[520px] opacity-10"
       />
 
-      <div className="relative z-10 p-6">
+      <div className="relative z-10 p-6 mt-16 sm:mt-4">
         <img src={logo} alt="Gwent Tracker" className="h-16 w-auto object-contain" />
       </div>
 
